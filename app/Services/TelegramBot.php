@@ -39,7 +39,7 @@ class TelegramBot
 //            'disable_web_page_preview' => urlencode($disable_web_page_preview),
 //            'reply_to_message_id' => urlencode($reply_to_message_id),
 //            'reply_markup' => ($reply_markup),
-//            'parse_mode' => ($parse_mode),
+            'parse_mode' => "HTML",
         ];
 
         return Http::request($this->apiUrl.'/sendMessage', json_encode($params), [], 'POST');
