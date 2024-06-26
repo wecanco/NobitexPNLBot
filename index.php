@@ -132,7 +132,7 @@ switch ($array_text_message[0]) {
                     echo "Total {$dstSymbol}: {$totalDestAmount} | {$avgDestPNLPercent}% | {$totalDestPNLAmount}$ \n";
                 }
 
-                $responseTxt .= "<b>Total {$dstSymbol}:</b> {$totalDestAmount} | avg: {$avgDestPNLPercent}%$ ({$totalDestPNLAmount}%)";
+                $responseTxt .= "<b>Total {$dstSymbol}:</b> {$totalDestAmount} | avg: {$avgDestPNLPercent}% ({$totalDestPNLAmount}$)";
             }
         }
 
