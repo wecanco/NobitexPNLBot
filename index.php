@@ -83,8 +83,11 @@ switch ($array_text_message[0]) {
                                 $wallet['pnl_price'] = ($wallet['avg_price'] * $wallet['balance']) * ($wallet['pnl_percent']/100);
                             }
                         }
+                        if ($_ENV['APP_RUN_IN_TERMINAL'] ?? false) {
+                            echo "{$symbol}: balance: {$wallet['balance']} | price: {$wallet['price']} | {$dstSymbol} balance: {$dstSymbolBalance} | avg price: {$wallet['avg_price']} | PNL: %{$wallet['pnl_percent']} ({$wallet['pnl_price']}$)\n\n";
+                        }
 
-                        $responseTxt .= "💠 **{$symbol}**: balance: {$wallet['balance']} | price: {$wallet['price']} | {$dstSymbol} balance: {$dstSymbolBalance} | avg price: {$wallet['avg_price']} | PNL: %{$wallet['pnl_percent']} ({$wallet['pnl_price']}$)\n\n";
+                        $responseTxt .= "💠 <b>{$symbol}</b>\n balance: {$wallet['balance']} \n price: {$wallet['price']} \n {$dstSymbol} balance: {$dstSymbolBalance} \n avg buy price: {$wallet['avg_price']} \n PNL: %{$wallet['pnl_percent']} ({$wallet['pnl_price']}$)\n---------------------\n";
                     }
                 }
 

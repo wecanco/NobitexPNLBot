@@ -2,8 +2,6 @@
 
 namespace App;
 
-global $settings;
-
 class Kernel
 {
     static private function read_classes() {
@@ -27,7 +25,10 @@ class Kernel
     }
 
     static private function read_envs() {
+        global $argv;
+
         $envFile = dirname(__FILE__).'/../.env';
+
         if (file_exists($envFile)) {
             $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
@@ -47,6 +48,12 @@ class Kernel
                 }
             }
         }
+
+        $runInTerminal = false;
+        if (isset($argv) && $argv && sizeof($argv) > 1) {
+            $runInTerminal = true;
+        }
+        putenv("APP_RUN_IN_TERMINAL=$runInTerminal");
 
     }
 
