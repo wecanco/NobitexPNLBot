@@ -19,6 +19,12 @@ $nobitex = new Nobitex($_ENV['NOBITEX_TOKEN'] ?? '');
 
 $array_text_message = explode(' ', $telegram->message['message']['text'] ?? '');
 $responseTxt = null;
+$admins = explode(',', str_replace([' ', '@'],'',strtolower($_ENV['BOT_ADMINS'])));
+
+if (!in_array(strtolower($telegram->message['from']['username'] ?? ''), $admins) && !($_ENV['APP_RUN_IN_TERMINAL'] ?? false)) {
+    $responseTxt = '❌ شما دسترسی به این ربات ندارید.';
+    goto send_message_step;
+}
 
 switch ($array_text_message[0]) {
     case "/start":
@@ -31,6 +37,7 @@ switch ($array_text_message[0]) {
                 $wallet['symbol'] = strtolower($symbol);
                 $wallet['balance'] = floatval($wallet['balance']);
                 if ($wallet['balance'] <= 0) {
+                    unset($wallets[$symbol]);
                     continue;
                 }
                 $symbols[] = strtolower($symbol);
@@ -40,22 +47,32 @@ switch ($array_text_message[0]) {
             $marketStats = $nobitex->marketStats(implode(',', $symbols), $dstSymbol);
             $nobitexMarketStats = $marketStats['stats'] ?? null;
             $globalMarketStats = $marketStats['global'] ?? null;
+            $totalDestAmount = 0;
+            $totalDestPNLPercent = 0;
+            $totalDestPNLAmount = 0;
 
             if ($nobitexMarketStats) {
                 foreach ($wallets as $symbol => &$wallet) {
                     $wallet['price'] = floatval($nobitexMarketStats[$wallet['symbol'] .'-'.$dstSymbol]['latest'] ?? 0);
+
+                    if ($wallet['price'] == 0) {
+                        unset($wallets[$symbol]);
+                        continue;
+                    }
+
                     $wallet[$dstSymbol.'-balance'] = $wallet['price'] * $wallet['balance'];
-                    $dstSymbolBalance = $wallet[$dstSymbol.'-balance'] ?? 0;
-                    if ($dstSymbolBalance > 0.01) {
+                    $wallet[$dstSymbol.'-balance'] = number_format($wallet[$dstSymbol.'-balance'] ?? 0, 2);
+                    if ($wallet[$dstSymbol.'-balance'] > 0.1) {
                         $walletTransactions = $nobitex->userWalletTransactions($wallet['id'])['transactions'];
                         if ($walletTransactions) {
                             $sumAmount = 0;
                             $wallet['buy_prices'] = null;
                             $wallet['avg_price'] = 0;
-                            $wallet['pnl_percent'] = null;
+                            $wallet['pnl_percent'] = 0;
                             $wallet['pnl_price'] = 0;
 
                             foreach ($walletTransactions as $walletTransaction) {
+                                $walletTransaction['description'] = str_replace([','], '', $walletTransaction['description']);
                                 if ($walletTransaction['currency'] == $wallet['symbol'] && strpos($walletTransaction['description'],'خرید') !== false) {
                                     if (preg_match('/^خرید\s+([\d.]+)\s+(.*?)\s+([\d.]+)\s+تتر$/', $walletTransaction['description'], $matches)) {
                                         $amount = $matches[1];
@@ -72,34 +89,60 @@ switch ($array_text_message[0]) {
 
                             }
 
-//                            if ($wallet['symbol'] == 'imx') {
-//                                print_r($walletTransactions);
+//                            if ($wallet['symbol'] == 'mkr') {
+//                                print_r($wallet['buy_prices']);
 //                                exit();
 //                            }
 
                             if ($wallet['buy_prices']) {
                                 $wallet['avg_price'] = floatval(array_sum($wallet['buy_prices']) / count($wallet['buy_prices']));
-                                $wallet['pnl_percent'] = (($wallet['price'] - $wallet['avg_price']) / $wallet['avg_price']) * 100;
-                                $wallet['pnl_price'] = ($wallet['avg_price'] * $wallet['balance']) * ($wallet['pnl_percent']/100);
+                                $wallet['pnl_percent'] = number_format((($wallet['price'] - $wallet['avg_price']) / $wallet['avg_price']) * 100, 2);
+                                $wallet['pnl_price'] = number_format(($wallet['avg_price'] * $wallet['balance']) * ($wallet['pnl_percent']/100), 2);
                             }
-                        }
-                        if ($_ENV['APP_RUN_IN_TERMINAL'] ?? false) {
-                            echo "{$symbol}: balance: {$wallet['balance']} | price: {$wallet['price']} | {$dstSymbol} balance: {$dstSymbolBalance} | avg price: {$wallet['avg_price']} | PNL: %{$wallet['pnl_percent']} ({$wallet['pnl_price']}$)\n\n";
+
+                            $totalDestAmount += $wallet['balance'];
+                            $totalDestPNLPercent += floatval($wallet['pnl_percent']);
+                            $totalDestPNLAmount += floatval($wallet['pnl_price']);
                         }
 
-                        $responseTxt .= "💠 <b>{$symbol}</b>\n balance: {$wallet['balance']} \n price: {$wallet['price']} \n {$dstSymbol} balance: {$dstSymbolBalance} \n avg buy price: {$wallet['avg_price']} \n PNL: %{$wallet['pnl_percent']} ({$wallet['pnl_price']}$)\n---------------------\n";
+//                        $responseTxt .= "💠 <b>{$symbol}</b>\n balance: {$wallet['balance']} \n price: {$wallet['price']} \n {$dstSymbol} balance: {$wallet[$dstSymbol.'-balance']} \n avg buy price: {$wallet['avg_price']} \n PNL(%): {$wallet['pnl_percent']} \n PNL($): {$wallet['pnl_price']}\n---------------------\n";
+                    } else {
+                        unset($wallets[$symbol]);
                     }
                 }
 
+                unset($wallet);
+
+                usort($wallets, function ($item1, $item2) {
+                    return intval($item1['pnl_percent']) <=> intval($item2['pnl_percent']);
+                });
+
+                $avgDestPNLPercent = number_format($totalDestPNLPercent/count($wallets), 2);
+
+                foreach ($wallets as $wallet) {
+                    $symbol = strtoupper($wallet['symbol']);
+                    if ($_ENV['APP_RUN_IN_TERMINAL'] ?? false) {
+                        echo "{$symbol}: balance: {$wallet['balance']} | price: {$wallet['price']} | {$dstSymbol} balance: {$wallet[$dstSymbol.'-balance']} | avg price: {$wallet['avg_price']} | PNL: %{$wallet['pnl_percent']} ({$wallet['pnl_price']}$)\n";
+                    }
+                    $responseTxt .= "💠 <b>{$symbol}</b>\n balance: {$wallet['balance']} \n price: {$wallet['price']} \n {$dstSymbol} balance: {$wallet[$dstSymbol.'-balance']} \n avg buy price: {$wallet['avg_price']} \n PNL(%): {$wallet['pnl_percent']} \n PNL($): {$wallet['pnl_price']}\n---------------------\n";
+                }
+                $totalDestAmount = number_format($totalDestAmount, 2);
+
+                if ($_ENV['APP_RUN_IN_TERMINAL'] ?? false) {
+                    echo "Total {$dstSymbol}: {$totalDestAmount} | {$avgDestPNLPercent}% | {$totalDestPNLAmount}$ \n";
+                }
+
+                $responseTxt .= "<b>Total {$dstSymbol}:</b> {$totalDestAmount} | avg: {$avgDestPNLPercent}%$ ({$totalDestPNLAmount}%)";
             }
-        }
-
-
-        if ($responseTxt) {
-            $result = $telegram->sendMessage($telegram->message['chat']['id'] ?? '395943421', $responseTxt);
         }
 
         break;
 
 }
+
+send_message_step:
+if ($responseTxt) {
+    $result = $telegram->sendMessage($telegram->message['chat']['id'] ?? '395943421', $responseTxt);
+}
+
 

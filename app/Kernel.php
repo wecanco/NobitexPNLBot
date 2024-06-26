@@ -53,6 +53,7 @@ class Kernel
         if (isset($argv) && $argv && sizeof($argv) > 1) {
             $runInTerminal = true;
         }
+        $_ENV['APP_RUN_IN_TERMINAL'] = $runInTerminal;
         putenv("APP_RUN_IN_TERMINAL=$runInTerminal");
 
     }
