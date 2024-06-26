@@ -21,7 +21,7 @@ $array_text_message = explode(' ', $telegram->message['message']['text'] ?? '');
 $responseTxt = null;
 $admins = explode(',', str_replace([' ', '@'],'',strtolower($_ENV['BOT_ADMINS'])));
 
-if (!in_array(strtolower($telegram->message['from']['username'] ?? ''), $admins) && !($_ENV['APP_RUN_IN_TERMINAL'] ?? false)) {
+if (!in_array(strtolower($telegram->message['message']['chat']['username'] ?? ''), $admins) && ($_ENV['APP_RUN_IN_TERMINAL'] ?? false) == false) {
     $responseTxt = '❌ شما دسترسی به این ربات ندارید.';
     goto send_message_step;
 }
@@ -142,7 +142,7 @@ switch ($array_text_message[0]) {
 
 send_message_step:
 if ($responseTxt) {
-    $result = $telegram->sendMessage($telegram->message['chat']['id'] ?? '395943421', $responseTxt);
+    $result = $telegram->sendMessage($telegram->message['message']['chat']['id'] ?? '@'.current($admins), $responseTxt);
 }
 
 
