@@ -1,6 +1,12 @@
 <?php
-global $settings;
+error_reporting(E_ERROR);
+ini_set('ignore_repeated_errors', TRUE);
+ini_set('display_errors', FALSE);
+ini_set('log_errors', TRUE);
+ini_set('error_log', dirname(__FILE__).'/errors');
 
+
+global $settings;
 include_once('app/Kernel.php');
 
 use App\Services\Nobitex;

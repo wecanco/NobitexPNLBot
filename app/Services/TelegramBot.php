@@ -20,7 +20,7 @@ class TelegramBot
 
     public function parse_message() {
         global $argv;
-        $this->message = json_decode(file_get_contents("php://input"));
+        $this->message = json_decode(file_get_contents("php://input"), true);
 
         if (isset($argv) && $argv && sizeof($argv) > 1) {
             unset($argv[0]);
