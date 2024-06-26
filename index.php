@@ -22,7 +22,7 @@ $responseTxt = null;
 $admins = explode(',', str_replace([' ', '@'],'',strtolower($_ENV['BOT_ADMINS'])));
 
 if (!in_array(strtolower($telegram->message['message']['chat']['username'] ?? ''), $admins) && ($_ENV['APP_RUN_IN_TERMINAL'] ?? false) == false) {
-    $responseTxt = '❌ شما دسترسی به این ربات ندارید.';
+    $responseTxt = '❌ شما دسترسی به این ربات را ندارید.';
     goto send_message_step;
 }
 
